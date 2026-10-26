@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Calendar & Deadline Reminder</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">STUDENT PRODUCTIVITY</p>
+      <h1>AI Calendar <span>& Deadline Reminder</span></h1>
+      <p class="subtitle">Plan smarter. Stay ahead of every deadline.</p>
+    </div>
+    <a class="button button-light" href="{{ url_for('demo_data') }}">Load demo tasks</a>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <section class="stats">
+      <article class="stat-card"><span>Active tasks</span><strong>{{ active_count }}</strong><small>Tasks to finish</small></article>
+      <article class="stat-card"><span>Due today</span><strong>{{ today_count }}</strong><small>Keep these in focus</small></article>
+      <article class="stat-card"><span>Overdue</span><strong>{{ overdue_count }}</strong><small>Need attention</small></article>
+      <article class="stat-card"><span>Completed</span><strong>{{ completed_count }}</strong><small>Great progress</small></article>
+    </section>
+
+    <div class="layout">
+      <section class="panel add-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">QUICK ENTRY</p><h2>Add a task</h2></div>
+          <span class="round-icon">＋</span>
+        </div>
+        <form action="{{ url_for('add_task') }}" method="post">
+          <label for="title">Task title *</label>
+          <input id="title" name="title" maxlength="120" placeholder="e.g. Submit project report" required>
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="3" placeholder="Add a short note (optional)"></textarea>
+          <label for="due_date">Deadline *</label>
+          <input id="due_date" name="due_date" type="datetime-local" value="{{ now }}" required>
+          <label for="priority">Importance</label>
+          <select id="priority" name="priority">
+            <option>Low</option><option selected>Medium</option><option>High</option>
+          </select>
+          <button class="button button-primary full" type="submit">＋ Add task</button>
+        </form>
+        <p class="hint">The priority helper combines your importance setting with deadline urgency.</p>
+      </section>
+
+      <section class="panel tasks-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">YOUR SCHEDULE</p><h2>Tasks & deadlines</h2></div>
+          <span class="task-count">{{ tasks|length }} total</span>
+        </div>
+        {% if tasks %}
+          <div class="task-list">
+          {% for task in tasks %}
+            <article class="task {% if task.completed %}is-complete{% endif %}">
+              <div class="task-marker {% if task.completed %}done{% elif task.is_overdue %}late{% endif %}">
+                {% if task.completed %}✓{% elif task.is_overdue %}!{% else %}•{% endif %}
+              </div>
+              <div class="task-content">
+                <div class="task-title-row">
+                  <h3>{{ task.title }}</h3>
+                  {% if task.completed %}<span class="pill green">Completed</span>
+                  {% elif task.is_overdue %}<span class="pill red">Overdue</span>
+                  {% elif task.is_due_today %}<span class="pill orange">Due today</span>
+                  {% else %}<span class="pill blue">{{ task.ai_priority }} priority</span>{% endif %}
+                </div>
+                {% if task.description %}<p class="task-description">{{ task.description }}</p>{% endif %}
+                <p class="due-line">◷ {{ task.due_display }} <span>· {{ task.priority }} importance</span></p>
+                <div class="task-actions">
+                  {% if not task.completed %}
+                  <form action="{{ url_for('complete_task', task_id=task.id) }}" method="post">
+                    <button class="text-button" type="submit">✓ Mark complete</button>
+                  </form>
+                  {% else %}
+                  <form action="{{ url_for('reopen_task', task_id=task.id) }}" method="post">
+                    <button class="text-button" type="submit">↺ Reopen</button>
+                  </form>
+                  {% endif %}
+                  <form action="{{ url_for('delete_task', task_id=task.id) }}" method="post" onsubmit="return confirm('Delete this task?')">
+                    <button class="text-button danger-text" type="submit">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state"><div class="empty-icon">▦</div><h3>Your calendar is clear</h3><p>Add your first task or load the demo tasks to see how it works.</p></div>
+        {% endif %}
+      </section>
+    </div>
+
+    <section class="panel reminders-panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">AUTOMATION</p><h2>Reminder centre</h2></div>
+        <span class="round-icon">♧</span>
+      </div>
+      <p class="section-note">The app checks deadlines when the dashboard opens and every minute while the server is running. Alerts are saved here once per task and alert type.</p>
+      {% if notices %}
+        <div class="notice-list">
+          {% for notice in notices %}
+          <div class="notice">
+            <span class="notice-symbol">!</span>
+            <div><strong>{{ notice.message }}</strong><small>Created {{ notice.created_at }}</small></div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="no-notices">No deadline alerts yet. Alerts appear when a task is due within three days.</p>
+      {% endif %}
+    </section>
+    <footer>AI Calendar & Deadline Reminder · College Mini-Project · Flask + SQLite</footer>
+  </main>
+</body>
+</html>
